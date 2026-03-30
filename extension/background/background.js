@@ -372,7 +372,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         case 'TEXT_SELECTED':
         case 'SELECTION_CANCELLED':
-          // Forward to popup if open
+          // Forward to all extension pages (e.g. popup if open)
+          try {
+            chrome.runtime.sendMessage(message);
+          } catch (forwardErr) {
+            // Popup may not be open; ignore the error
+            console.debug('[AI Checker] Could not forward message to popup:', forwardErr.message);
+          }
           sendResponse({ success: true });
           break;
 
