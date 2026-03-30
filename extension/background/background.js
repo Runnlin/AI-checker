@@ -370,6 +370,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           break;
         }
 
+        case 'RUN_TEXT_SCAN': {
+          const textResult = await runTextDetection(message.text, message.url || '');
+          sendResponse({ success: true, result: textResult });
+          break;
+        }
+
         case 'TEXT_SELECTED':
         case 'SELECTION_CANCELLED':
           // Forward to all extension pages (e.g. popup if open)

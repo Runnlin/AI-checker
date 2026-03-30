@@ -17,7 +17,8 @@ function analyzeTextHeuristics(text) {
   const reasons = [];
   let score = 0;
 
-  const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
+  // Support both English and Chinese sentence terminators
+  const sentences = text.match(/[^.!?。！？]+[.!?。！？]+/g) || [];
   if (sentences.length >= 3) {
     const lengths = sentences.map(s => s.trim().split(/\s+/).length);
     const avgLen = lengths.reduce((a, b) => a + b, 0) / lengths.length;
@@ -34,20 +35,20 @@ function analyzeTextHeuristics(text) {
       reasons.push('句子长度较均匀 / Moderately uniform sentence lengths');
     }
 
-    // Check average sentence length (AI tends toward 15-25 words)
-    if (avgLen >= 15 && avgLen <= 25) {
+    // Check average sentence length (AI tends toward 10-25 words; Chinese sentences are shorter)
+    if (avgLen >= 10 && avgLen <= 25) {
       score += 10;
       reasons.push('句子长度符合AI特征 / Sentence length typical of AI');
     }
   }
 
-  // Lexical diversity (Type-Token Ratio)
-  const words = text.toLowerCase().match(/\b[a-z\u4e00-\u9fff]+\b/g) || [];
-  if (words.length > 20) {
-    const uniqueWords = new Set(words);
-    const ttr = uniqueWords.size / words.length;
+  // Lexical diversity (Type-Token Ratio) - for English text only
+  const englishWords = text.toLowerCase().match(/\b[a-z]+\b/g) || [];
+  if (englishWords.length > 20) {
+    const uniqueWords = new Set(englishWords);
+    const ttr = uniqueWords.size / englishWords.length;
     // AI text often has moderate TTR - not too low (repetitive) not too high (creative)
-    if (ttr >= 0.35 && ttr <= 0.55 && words.length > 50) {
+    if (ttr >= 0.35 && ttr <= 0.55 && englishWords.length > 50) {
       score += 15;
       reasons.push('词汇多样性符合AI特征 / Vocabulary diversity typical of AI');
     }
@@ -80,16 +81,34 @@ function analyzeTextHeuristics(text) {
     /总的来说/,
     /综上所述/,
     /值得注意的是/,
-    /此外/,
+    /此外[，,]/,
     /通过以上分析/,
     /综合考虑/,
-    /在此基础上/
+    /在此基础上/,
+    /需要注意的是/,
+    /值得关注的是/,
+    /具体来说/,
+    /与此同时/,
+    /不可忽视的是/,
+    /发挥着重要作用/,
+    /至关重要/,
+    /有助于/,
+    /总结一下/,
+    /主要体现在/,
+    /总体而言/,
+    /从整体来看/,
+    /不仅如此/,
+    /由此可见/,
+    /对于[^，。]{2,10}来说/,
+    /无论是[^，。]*还是/,
   ];
 
   // Cross-line patterns require separate handling
   const multilinePatterns = [
-    /首先[\s\S]*?其次[\s\S]*?最后/,
-    /不仅[\s\S]*?而且/
+    /首先[\s\S]{1,100}其次[\s\S]{1,100}(最后|再次|然后)/,
+    /不仅[\s\S]{1,50}而且/,
+    /一方面[\s\S]{1,100}另一方面/,
+    /一是[\s\S]{1,100}二是/,
   ];
 
   let phraseMatches = 0;
@@ -100,10 +119,10 @@ function analyzeTextHeuristics(text) {
     if (pattern.test(text)) phraseMatches++;
   });
 
-  if (phraseMatches >= 5) {
+  if (phraseMatches >= 4) {
     score += 25;
     reasons.push(`检测到${phraseMatches}个AI常用短语 / Detected ${phraseMatches} AI-typical phrases`);
-  } else if (phraseMatches >= 3) {
+  } else if (phraseMatches >= 2) {
     score += 15;
     reasons.push(`检测到${phraseMatches}个AI常用短语 / Detected ${phraseMatches} AI-typical phrases`);
   } else if (phraseMatches >= 1) {
@@ -111,10 +130,20 @@ function analyzeTextHeuristics(text) {
     reasons.push(`检测到${phraseMatches}个AI常用短语 / Detected ${phraseMatches} AI-typical phrase(s)`);
   }
 
+  // Check for structured numbered or lettered lists (very common in AI output)
+  const numberedListItems = (text.match(/^\s*(?:\d+[\.、）\)]\s+|[一二三四五六七八九十]+[、\.]\s*)/mg) || []).length;
+  if (numberedListItems >= 3) {
+    score += 20;
+    reasons.push(`检测到${numberedListItems}个结构化列表项 / Detected ${numberedListItems} structured list items`);
+  } else if (numberedListItems >= 2) {
+    score += 10;
+    reasons.push(`检测到${numberedListItems}个结构化列表项 / Detected ${numberedListItems} structured list items`);
+  }
+
   // Check for perfect paragraph structure (AI tends to use 3-5 paragraphs)
   const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 20);
   if (paragraphs.length >= 3 && paragraphs.length <= 6) {
-    const paraLengths = paragraphs.map(p => p.split(/\s+/).length);
+    const paraLengths = paragraphs.map(p => p.trim().length);
     const paraAvg = paraLengths.reduce((a, b) => a + b, 0) / paraLengths.length;
     const paraVariance = paraLengths.reduce((a, b) => a + Math.pow(b - paraAvg, 2), 0) / paraLengths.length;
     if (Math.sqrt(paraVariance) / paraAvg < 0.4) {
@@ -124,9 +153,11 @@ function analyzeTextHeuristics(text) {
   }
 
   // Check for absence of personal pronouns / first person voice
-  const firstPersonCount = (text.match(/\b(I|me|my|mine|myself|我|我的|我们)\b/gi) || []).length;
-  const wordCount = words.length;
-  if (wordCount > 100 && firstPersonCount / wordCount < 0.005) {
+  const allWords = text.match(/[\u4e00-\u9fff]|\b[a-zA-Z]+\b/g) || [];
+  const firstPersonCount = (text.match(/\b(I|me|my|mine|myself)\b/gi) || []).length +
+    (text.match(/我们|我的|俺|我/g) || []).length;
+  const wordCount = allWords.length;
+  if (wordCount > 50 && firstPersonCount / wordCount < 0.01) {
     score += 10;
     reasons.push('缺乏第一人称表达 / Lacks first-person voice');
   }
@@ -135,8 +166,8 @@ function analyzeTextHeuristics(text) {
   score = Math.min(100, score);
 
   let confidence = 'low';
-  if (sentences.length >= 10 || words.length >= 200) confidence = 'high';
-  else if (sentences.length >= 5 || words.length >= 100) confidence = 'medium';
+  if (sentences.length >= 10 || wordCount >= 200) confidence = 'high';
+  else if (sentences.length >= 5 || wordCount >= 100) confidence = 'medium';
 
   return { score, reasons, confidence };
 }
