@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Content Checker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <span class="logo">🤖</span>
+        <div class="header-title">
+          <h1>AI Content Checker</h1>
+          <span class="header-sub">AI内容检测器</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btn-options" class="icon-btn" title="设置 / Settings">⚙️</button>
+        <button id="btn-history" class="icon-btn" title="历史记录 / History">📋</button>
+      </div>
+    </header>
+
+    <!-- URL Bar -->
+    <div class="url-bar">
+      <div class="url-status-indicator" id="url-status-dot"></div>
+      <span class="url-text" id="current-url" title="">正在加载... / Loading...</span>
+      <div class="list-badge" id="list-badge" style="display:none"></div>
+    </div>
+
+    <!-- Alert Banner -->
+    <div class="alert-banner" id="alert-banner" style="display:none">
+      <span id="alert-text"></span>
+    </div>
+
+    <!-- Scan Scope Section -->
+    <section class="section">
+      <div class="section-header">
+        <h2>扫描范围 / Scan Scope</h2>
+        <button id="btn-select-mode" class="small-btn" title="在页面上框选范围 / Select range on page">
+          🖱️ 选择范围
+        </button>
+      </div>
+      <div class="scope-options">
+        <label class="scope-option">
+          <input type="checkbox" id="scope-text" checked>
+          <span class="scope-icon">📝</span>
+          <span class="scope-label">文本 / Text</span>
+        </label>
+        <label class="scope-option">
+          <input type="checkbox" id="scope-images" checked>
+          <span class="scope-icon">🖼️</span>
+          <span class="scope-label">图片 / Images</span>
+        </label>
+        <label class="scope-option">
+          <input type="checkbox" id="scope-videos" checked>
+          <span class="scope-icon">🎬</span>
+          <span class="scope-label">视频 / Videos</span>
+        </label>
+      </div>
+      <!-- Selection mode indicator -->
+      <div id="selection-indicator" class="selection-indicator" style="display:none">
+        <span>🖱️ 选择模式已激活 - 在页面上选择文本 / Selection mode active - Select text on page</span>
+        <button id="btn-cancel-selection" class="small-btn danger">取消</button>
+      </div>
+      <div id="selected-preview" class="selected-preview" style="display:none">
+        <span class="selected-label">已选中文本 / Selected text:</span>
+        <span id="selected-char-count" class="selected-count"></span>
+        <button id="btn-clear-selection" class="small-btn">清除</button>
+      </div>
+    </section>
+
+    <!-- Scan Button -->
+    <div class="scan-section">
+      <button id="btn-scan" class="scan-btn">
+        <span id="scan-btn-icon">🔍</span>
+        <span id="scan-btn-text">开始检测 / Start Scan</span>
+      </button>
+      <div id="scan-progress" class="progress-bar" style="display:none">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+    </div>
+
+    <!-- Results Section -->
+    <section class="section results-section" id="results-section" style="display:none">
+      <div class="section-header">
+        <h2>检测结果 / Results</h2>
+        <span class="result-timestamp" id="result-timestamp"></span>
+      </div>
+
+      <!-- Overall Score -->
+      <div class="overall-score-card" id="overall-score-card">
+        <div class="score-ring-container">
+          <svg class="score-ring" viewBox="0 0 80 80">
+            <circle class="score-ring-bg" cx="40" cy="40" r="32" />
+            <circle class="score-ring-fill" id="score-ring-fill" cx="40" cy="40" r="32"
+              stroke-dasharray="201 201" stroke-dashoffset="201"/>
+          </svg>
+          <div class="score-number" id="overall-score-text">0</div>
+        </div>
+        <div class="score-info">
+          <div class="score-label" id="overall-score-label">未检测 / Not scanned</div>
+          <div class="score-sublabel" id="overall-score-sublabel"></div>
+        </div>
+      </div>
+
+      <!-- Text Results -->
+      <div id="text-results" class="result-card" style="display:none">
+        <div class="result-card-header">
+          <span>📝 文本检测 / Text</span>
+          <span class="result-badge" id="text-score-badge">-</span>
+        </div>
+        <div class="result-details" id="text-result-details"></div>
+      </div>
+
+      <!-- Image Results -->
+      <div id="image-results" class="result-card" style="display:none">
+        <div class="result-card-header">
+          <span>🖼️ 图片检测 / Images</span>
+          <span class="result-badge" id="image-score-badge">-</span>
+        </div>
+        <div class="result-details" id="image-result-details"></div>
+        <div id="image-list" class="image-list"></div>
+      </div>
+
+      <!-- Video Results -->
+      <div id="video-results" class="result-card" style="display:none">
+        <div class="result-card-header">
+          <span>🎬 视频检测 / Videos</span>
+          <span class="result-badge" id="video-score-badge">-</span>
+        </div>
+        <div class="result-details" id="video-result-details"></div>
+      </div>
+
+      <!-- Actions -->
+      <div class="result-actions">
+        <button id="btn-add-whitelist" class="action-btn white">✅ 加入白名单</button>
+        <button id="btn-add-blacklist" class="action-btn black">⛔ 加入黑名单</button>
+      </div>
+    </section>
+
+    <!-- History Section (inline) -->
+    <section class="section history-section" id="history-section" style="display:none">
+      <div class="section-header">
+        <h2>检测历史 / Scan History</h2>
+        <button id="btn-clear-history" class="small-btn danger">清除</button>
+      </div>
+      <div id="history-list" class="history-list">
+        <div class="empty-state">暂无记录 / No records yet</div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <span>AI Checker v1.0</span>
+      <a href="#" id="link-options">设置 / Settings</a>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
