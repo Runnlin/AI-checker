@@ -66,11 +66,6 @@
               <span class="checkbox-icon">🖼️</span>
               <span>图片 / Images</span>
             </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="default-videos" checked>
-              <span class="checkbox-icon">🎬</span>
-              <span>视频 / Videos</span>
-            </label>
           </div>
         </div>
 
@@ -246,7 +241,6 @@
                 <option value="">全部类型 / All Types</option>
                 <option value="text">📝 文本 / Text</option>
                 <option value="images">🖼️ 图片 / Images</option>
-                <option value="videos">🎬 视频 / Videos</option>
                 <option value="full">📄 全页 / Full Page</option>
               </select>
               <select id="history-filter-score" class="select-input small">
@@ -273,11 +267,11 @@
           <h3>AI Content Checker</h3>
           <p class="version-text">版本 / Version: 1.0.0</p>
           <p class="about-desc">
-            一款Chrome浏览器扩展，用于检测网页中的AI生成内容（文本、图片、视频）。
+            一款Chrome浏览器扩展，用于检测网页中的AI生成内容（文本、图片）。
             支持黑白名单管理、自定义扫描范围、URL历史记录，以及第三方AI检测API集成。
           </p>
           <p class="about-desc">
-            A Chrome browser extension for detecting AI-generated content (text, images, videos) on web pages.
+            A Chrome browser extension for detecting AI-generated content (text, images) on web pages.
             Features whitelist/blacklist management, customizable scan scope, URL history, and third-party AI detection API integration.
           </p>
         </div>
@@ -285,7 +279,7 @@
         <div class="card">
           <h3 class="card-title">功能特性 / Features</h3>
           <ul class="feature-list">
-            <li>🔍 检测文本、图片和视频中的AI生成内容 / Detect AI content in text, images, and videos</li>
+            <li>🔍 检测文本和图片中的AI生成内容 / Detect AI content in text and images</li>
             <li>✅ 白名单：标记可信网站，跳过检测 / Whitelist: Mark trusted sites to skip detection</li>
             <li>⛔ 黑名单：标记已知AI来源 / Blacklist: Mark known AI sources</li>
             <li>🖱️ 自定义扫描范围：选择页面上的特定区域 / Custom scope: Select specific areas on page</li>
@@ -300,7 +294,7 @@
           <p class="card-desc">本插件使用以下方法检测AI生成内容：</p>
           <ul class="feature-list">
             <li><strong>启发式算法 / Heuristics</strong>: 分析句子均匀性、词汇多样性、AI常用短语、段落结构等 / Analyzes sentence uniformity, lexical diversity, AI phrases, paragraph structure</li>
-            <li><strong>URL分析 / URL Analysis</strong>: 检测已知AI图像/视频服务的URL模式 / Detects URL patterns from known AI image/video services</li>
+            <li><strong>URL分析 / URL Analysis</strong>: 检测已知AI图像服务的URL模式 / Detects URL patterns from known AI image services</li>
             <li><strong>元数据分析 / Metadata</strong>: 检查图片尺寸、alt文本等AI生成特征 / Checks image dimensions, alt text for AI-typical characteristics</li>
             <li><strong>API集成 / API Integration</strong>: 可接入专业AI检测服务获得更高准确率 / Integrates with professional services for higher accuracy</li>
           </ul>

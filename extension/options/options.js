@@ -52,7 +52,6 @@ async function loadGeneralSettings() {
   const scope = settings.defaultScope || {};
   document.getElementById('default-text').checked = scope.text !== false;
   document.getElementById('default-images').checked = scope.images !== false;
-  document.getElementById('default-videos').checked = scope.videos !== false;
 
   const thresholds = settings.thresholds || {};
   document.getElementById('threshold-warning').value = thresholds.warning || 40;
@@ -68,8 +67,7 @@ async function saveGeneralSettings() {
 
   settings.defaultScope = {
     text: document.getElementById('default-text').checked,
-    images: document.getElementById('default-images').checked,
-    videos: document.getElementById('default-videos').checked
+    images: document.getElementById('default-images').checked
   };
 
   settings.thresholds = {
@@ -205,8 +203,7 @@ function renderHistory(history) {
   }
 
   const typeIcons = {
-    text: '📝', image: '🖼️', images: '🖼️',
-    video: '🎬', videos: '🎬', full: '📄'
+    text: '📝', image: '🖼️', images: '🖼️', full: '📄'
   };
 
   const table = document.createElement('table');

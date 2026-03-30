@@ -14,7 +14,7 @@ chrome.runtime.onInstalled.addListener(async () => {
   if (!existing.settings) {
     await chrome.storage.local.set({
       settings: {
-        defaultScope: { text: true, images: true, videos: true },
+        defaultScope: { text: true, images: true },
         apiKeys: { gptzero: '', originality: '', hive: '' },
         autoScanEnabled: false,
         language: 'zh'
@@ -88,13 +88,13 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 async function triggerFullPageScan(tab) {
   try {
     const { settings } = await chrome.storage.local.get('settings');
-    const scope = settings?.defaultScope || { text: true, images: true, videos: true };
+    const scope = settings?.defaultScope || { text: true, images: true };
 
     const [contentResult] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: () => {
         return new Promise(resolve => {
-          chrome.runtime.sendMessage({ type: 'EXTRACT_CONTENT', scope: { text: true, images: true, videos: true } }, resolve);
+          chrome.runtime.sendMessage({ type: 'EXTRACT_CONTENT', scope: { text: true, images: true } }, resolve);
         });
       }
     });
@@ -132,19 +132,6 @@ async function runImageDetection(imageData) {
   } catch (e) {
     const heuristic = analyzeImageHeuristics(imageData);
     return { type: 'image', method: 'heuristic', ...heuristic, timestamp: Date.now() };
-  }
-}
-
-/**
- * Run AI detection on video content.
- */
-async function runVideoDetection(videoData) {
-  try {
-    const result = await detectVideoAI(videoData);
-    return { type: 'video', ...result, timestamp: Date.now() };
-  } catch (e) {
-    const heuristic = analyzeVideoHeuristics(videoData);
-    return { type: 'video', method: 'heuristic', ...heuristic, timestamp: Date.now() };
   }
 }
 
@@ -226,7 +213,6 @@ async function processScanRequest(tabId, tabUrl, scope, content) {
     listStatus: await checkUrlLists(tabUrl),
     text: null,
     images: [],
-    videos: [],
     overallScore: 0
   };
 
@@ -267,22 +253,6 @@ async function processScanRequest(tabId, tabUrl, scope, content) {
         score: Math.max(...results.images.map(i => i.score || 0)),
         method: 'heuristic',
         reasons: [`检测了${results.images.length}张图片 / Analyzed ${results.images.length} images`]
-      });
-    }
-  }
-
-  // Video detection
-  if (scope.videos && content.videos?.length > 0) {
-    for (const video of content.videos.slice(0, 10)) {
-      const videoResult = await runVideoDetection(video);
-      results.videos.push({ ...videoResult, src: video.src });
-      scores.push(videoResult.score || 0);
-    }
-    if (results.videos.length > 0) {
-      await saveToHistory(tabUrl, 'videos', {
-        score: Math.max(...results.videos.map(v => v.score || 0)),
-        method: 'heuristic',
-        reasons: [`检测了${results.videos.length}个视频 / Analyzed ${results.videos.length} videos`]
       });
     }
   }
