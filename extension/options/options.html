@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Content Checker - 设置 / Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="page-container">
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <span class="logo">🤖</span>
+        <div>
+          <div class="app-name">AI Checker</div>
+          <div class="app-version">v1.0.0</div>
+        </div>
+      </div>
+      <ul class="nav-list">
+        <li class="nav-item active" data-tab="general">
+          <span class="nav-icon">⚙️</span>
+          <span>常规设置 / General</span>
+        </li>
+        <li class="nav-item" data-tab="whitelist">
+          <span class="nav-icon">✅</span>
+          <span>白名单 / Whitelist</span>
+        </li>
+        <li class="nav-item" data-tab="blacklist">
+          <span class="nav-icon">⛔</span>
+          <span>黑名单 / Blacklist</span>
+        </li>
+        <li class="nav-item" data-tab="api">
+          <span class="nav-icon">🔑</span>
+          <span>API配置 / API Keys</span>
+        </li>
+        <li class="nav-item" data-tab="history">
+          <span class="nav-icon">📋</span>
+          <span>检测历史 / History</span>
+        </li>
+        <li class="nav-item" data-tab="about">
+          <span class="nav-icon">ℹ️</span>
+          <span>关于 / About</span>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- ===== GENERAL SETTINGS ===== -->
+      <section class="tab-content active" id="tab-general">
+        <h2 class="section-title">常规设置 / General Settings</h2>
+
+        <div class="card">
+          <h3 class="card-title">默认扫描范围 / Default Scan Scope</h3>
+          <p class="card-desc">选择打开插件时默认勾选的内容类型 / Choose which content types are checked by default</p>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="default-text" checked>
+              <span class="checkbox-icon">📝</span>
+              <span>文本内容 / Text Content</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="default-images" checked>
+              <span class="checkbox-icon">🖼️</span>
+              <span>图片 / Images</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="default-videos" checked>
+              <span class="checkbox-icon">🎬</span>
+              <span>视频 / Videos</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">检测阈值 / Detection Threshold</h3>
+          <p class="card-desc">设置AI检测的警告分数阈值（0-100）/ Set the score threshold for AI warnings (0-100)</p>
+          <div class="input-group">
+            <label>警告阈值 / Warning Threshold</label>
+            <div class="range-group">
+              <input type="range" id="threshold-warning" min="0" max="100" value="40" class="range-input">
+              <span id="threshold-warning-val" class="range-value">40</span>
+            </div>
+          </div>
+          <div class="input-group">
+            <label>危险阈值 / Danger Threshold</label>
+            <div class="range-group">
+              <input type="range" id="threshold-danger" min="0" max="100" value="70" class="range-input">
+              <span id="threshold-danger-val" class="range-value">70</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">历史记录 / History Settings</h3>
+          <div class="input-group">
+            <label>最大记录数 / Max History Entries</label>
+            <select id="max-history" class="select-input">
+              <option value="100">100</option>
+              <option value="200">200</option>
+              <option value="500" selected>500</option>
+              <option value="1000">1000</option>
+            </select>
+          </div>
+          <div style="margin-top:12px">
+            <button id="btn-clear-all-history" class="btn btn-danger">🗑️ 清除所有历史记录 / Clear All History</button>
+          </div>
+        </div>
+
+        <div class="save-bar">
+          <button id="btn-save-general" class="btn btn-primary">💾 保存设置 / Save Settings</button>
+          <span id="save-status-general" class="save-status"></span>
+        </div>
+      </section>
+
+      <!-- ===== WHITELIST ===== -->
+      <section class="tab-content" id="tab-whitelist">
+        <h2 class="section-title">白名单管理 / Whitelist Management</h2>
+        <p class="section-desc">白名单中的域名将被视为可信来源，跳过AI检测 / Whitelisted domains are trusted and skipped during AI detection</p>
+
+        <div class="card">
+          <h3 class="card-title">添加到白名单 / Add to Whitelist</h3>
+          <div class="add-pattern-form">
+            <input type="text" id="whitelist-pattern-input" class="text-input" placeholder="domain.com 或 *.example.com">
+            <input type="text" id="whitelist-note-input" class="text-input" placeholder="备注 / Note (optional)">
+            <button id="btn-add-whitelist" class="btn btn-success">✅ 添加 / Add</button>
+          </div>
+          <p class="hint">支持精确域名（example.com）或通配符（*.example.com） / Supports exact domain or wildcard patterns</p>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">已加入白名单的域名 / Whitelisted Domains</h3>
+          <div id="whitelist-entries" class="list-entries">
+            <div class="empty-state">白名单为空 / Whitelist is empty</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== BLACKLIST ===== -->
+      <section class="tab-content" id="tab-blacklist">
+        <h2 class="section-title">黑名单管理 / Blacklist Management</h2>
+        <p class="section-desc">黑名单中的域名将被标记为高风险AI来源 / Blacklisted domains are flagged as high-risk AI sources</p>
+
+        <div class="card">
+          <h3 class="card-title">添加到黑名单 / Add to Blacklist</h3>
+          <div class="add-pattern-form">
+            <input type="text" id="blacklist-pattern-input" class="text-input" placeholder="domain.com 或 *.example.com">
+            <input type="text" id="blacklist-note-input" class="text-input" placeholder="备注 / Note (optional)">
+            <button id="btn-add-blacklist" class="btn btn-danger">⛔ 添加 / Add</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">已加入黑名单的域名 / Blacklisted Domains</h3>
+          <div id="blacklist-entries" class="list-entries">
+            <div class="empty-state">黑名单为空 / Blacklist is empty</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== API KEYS ===== -->
+      <section class="tab-content" id="tab-api">
+        <h2 class="section-title">API密钥配置 / API Key Configuration</h2>
+        <p class="section-desc">配置第三方AI检测服务的API密钥以获得更准确的检测结果。不配置时使用内置启发式算法。/ Configure API keys for third-party AI detection services for more accurate results. Built-in heuristics are used without API keys.</p>
+
+        <div class="card api-card">
+          <div class="api-card-header">
+            <div>
+              <h3 class="card-title">GPTZero</h3>
+              <p class="card-desc">专业的AI文本检测服务，支持多语言 / Professional AI text detection with multilingual support</p>
+            </div>
+            <a href="https://gptzero.me" target="_blank" class="api-link">获取API密钥 →</a>
+          </div>
+          <div class="input-group">
+            <label>API密钥 / API Key</label>
+            <div class="api-key-input-group">
+              <input type="password" id="api-gptzero" class="text-input" placeholder="sk-...">
+              <button class="btn-toggle-visibility" data-target="api-gptzero">👁</button>
+            </div>
+          </div>
+          <div class="api-features">
+            <span class="feature-tag">✅ 文本检测 / Text</span>
+            <span class="feature-tag">✅ 多语言 / Multilingual</span>
+            <span class="feature-tag">✅ 高准确率 / High accuracy</span>
+          </div>
+        </div>
+
+        <div class="card api-card">
+          <div class="api-card-header">
+            <div>
+              <h3 class="card-title">Originality.ai</h3>
+              <p class="card-desc">AI内容和抄袭检测 / AI content and plagiarism detection</p>
+            </div>
+            <a href="https://originality.ai" target="_blank" class="api-link">获取API密钥 →</a>
+          </div>
+          <div class="input-group">
+            <label>API密钥 / API Key</label>
+            <div class="api-key-input-group">
+              <input type="password" id="api-originality" class="text-input" placeholder="...">
+              <button class="btn-toggle-visibility" data-target="api-originality">👁</button>
+            </div>
+          </div>
+          <div class="api-features">
+            <span class="feature-tag">✅ 文本检测 / Text</span>
+            <span class="feature-tag">✅ 抄袭检测 / Plagiarism</span>
+          </div>
+        </div>
+
+        <div class="card api-card">
+          <div class="api-card-header">
+            <div>
+              <h3 class="card-title">Hive Moderation</h3>
+              <p class="card-desc">AI图片生成内容检测 / AI image generation detection</p>
+            </div>
+            <a href="https://thehive.ai" target="_blank" class="api-link">获取API密钥 →</a>
+          </div>
+          <div class="input-group">
+            <label>API密钥 / API Key</label>
+            <div class="api-key-input-group">
+              <input type="password" id="api-hive" class="text-input" placeholder="...">
+              <button class="btn-toggle-visibility" data-target="api-hive">👁</button>
+            </div>
+          </div>
+          <div class="api-features">
+            <span class="feature-tag">✅ 图片检测 / Images</span>
+            <span class="feature-tag">✅ 高准确率 / High accuracy</span>
+          </div>
+        </div>
+
+        <div class="save-bar">
+          <button id="btn-save-api" class="btn btn-primary">💾 保存API密钥 / Save API Keys</button>
+          <span id="save-status-api" class="save-status"></span>
+        </div>
+      </section>
+
+      <!-- ===== HISTORY ===== -->
+      <section class="tab-content" id="tab-history">
+        <h2 class="section-title">检测历史 / Scan History</h2>
+
+        <div class="card">
+          <div class="history-toolbar">
+            <div class="history-filters">
+              <select id="history-filter-type" class="select-input small">
+                <option value="">全部类型 / All Types</option>
+                <option value="text">📝 文本 / Text</option>
+                <option value="images">🖼️ 图片 / Images</option>
+                <option value="videos">🎬 视频 / Videos</option>
+                <option value="full">📄 全页 / Full Page</option>
+              </select>
+              <select id="history-filter-score" class="select-input small">
+                <option value="">全部分数 / All Scores</option>
+                <option value="high">高风险 ≥70 / High risk</option>
+                <option value="medium">中风险 40-69 / Medium</option>
+                <option value="low">低风险 &lt;40 / Low risk</option>
+              </select>
+            </div>
+            <button id="btn-clear-history-page" class="btn btn-danger small">🗑️ 清除全部</button>
+          </div>
+          <div id="history-entries" class="history-table-container">
+            <div class="empty-state">暂无检测记录 / No scan history yet</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== ABOUT ===== -->
+      <section class="tab-content" id="tab-about">
+        <h2 class="section-title">关于 / About</h2>
+
+        <div class="card about-card">
+          <div class="about-logo">🤖</div>
+          <h3>AI Content Checker</h3>
+          <p class="version-text">版本 / Version: 1.0.0</p>
+          <p class="about-desc">
+            一款Chrome浏览器扩展，用于检测网页中的AI生成内容（文本、图片、视频）。
+            支持黑白名单管理、自定义扫描范围、URL历史记录，以及第三方AI检测API集成。
+          </p>
+          <p class="about-desc">
+            A Chrome browser extension for detecting AI-generated content (text, images, videos) on web pages.
+            Features whitelist/blacklist management, customizable scan scope, URL history, and third-party AI detection API integration.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">功能特性 / Features</h3>
+          <ul class="feature-list">
+            <li>🔍 检测文本、图片和视频中的AI生成内容 / Detect AI content in text, images, and videos</li>
+            <li>✅ 白名单：标记可信网站，跳过检测 / Whitelist: Mark trusted sites to skip detection</li>
+            <li>⛔ 黑名单：标记已知AI来源 / Blacklist: Mark known AI sources</li>
+            <li>🖱️ 自定义扫描范围：选择页面上的特定区域 / Custom scope: Select specific areas on page</li>
+            <li>📋 URL历史记录：追踪已检测页面的结果 / URL history: Track scan results for pages</li>
+            <li>🔑 支持第三方API：GPTZero、Originality.ai、Hive / Third-party APIs: GPTZero, Originality.ai, Hive</li>
+            <li>🌐 支持中英双语界面 / Bilingual Chinese/English interface</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">检测方法 / Detection Methods</h3>
+          <p class="card-desc">本插件使用以下方法检测AI生成内容：</p>
+          <ul class="feature-list">
+            <li><strong>启发式算法 / Heuristics</strong>: 分析句子均匀性、词汇多样性、AI常用短语、段落结构等 / Analyzes sentence uniformity, lexical diversity, AI phrases, paragraph structure</li>
+            <li><strong>URL分析 / URL Analysis</strong>: 检测已知AI图像/视频服务的URL模式 / Detects URL patterns from known AI image/video services</li>
+            <li><strong>元数据分析 / Metadata</strong>: 检查图片尺寸、alt文本等AI生成特征 / Checks image dimensions, alt text for AI-typical characteristics</li>
+            <li><strong>API集成 / API Integration</strong>: 可接入专业AI检测服务获得更高准确率 / Integrates with professional services for higher accuracy</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">数据存储说明 / Data Storage</h3>
+          <p class="card-desc">
+            所有数据（白名单、黑名单、历史记录、API密钥）均存储在浏览器本地，不会上传到任何服务器。
+            API密钥仅在您配置了第三方服务时才会使用，且仅发送到对应的官方API端点。
+          </p>
+          <p class="card-desc" style="margin-top: 8px">
+            All data (whitelist, blacklist, history, API keys) is stored locally in the browser and never uploaded to any server.
+            API keys are only used when you configure third-party services and are only sent to the respective official API endpoints.
+          </p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
