@@ -150,7 +150,6 @@ async function loadScopePreferences() {
   if (scope) {
     el('scope-text').checked = scope.text !== false;
     el('scope-images').checked = scope.images !== false;
-    el('scope-videos').checked = scope.videos !== false;
   }
 }
 
@@ -172,11 +171,10 @@ async function startScan() {
 
   const scope = {
     text: el('scope-text').checked,
-    images: el('scope-images').checked,
-    videos: el('scope-videos').checked
+    images: el('scope-images').checked
   };
 
-  if (!scope.text && !scope.images && !scope.videos) {
+  if (!scope.text && !scope.images) {
     alert('请至少选择一种内容类型 / Please select at least one content type');
     return;
   }
@@ -200,8 +198,7 @@ async function startScan() {
       content = {
         meta: { url: currentTab.url, title: currentTab.title, timestamp: Date.now() },
         text: scope.text ? selectedText : '',
-        images: [],
-        videos: []
+        images: []
       };
     } else {
       // Extract from full page via content script
@@ -302,7 +299,6 @@ function displayResults(result) {
     const methods = new Set();
     if (result.text?.method) methods.add(result.text.method);
     result.images?.forEach(i => { if (i.method) methods.add(i.method); });
-    result.videos?.forEach(v => { if (v.method) methods.add(v.method); });
     el('overall-score-sublabel').textContent = sublabel + Array.from(methods).join(', ');
   }
 
@@ -369,25 +365,7 @@ function displayResults(result) {
     el('image-results').style.display = 'none';
   }
 
-  // Video results
-  if (result.videos && result.videos.length > 0) {
-    const card = el('video-results');
-    card.style.display = 'block';
-    const maxScore = Math.max(...result.videos.map(v => v.score || 0));
-    const badgeClass = getBadgeClass(maxScore);
-    el('video-score-badge').textContent = `${maxScore}/100 (${result.videos.length}个)`;
-    el('video-score-badge').className = `result-badge ${badgeClass}`;
-
-    const details = el('video-result-details');
-    const aiVideos = result.videos.filter(v => (v.score || 0) >= 40);
-    if (aiVideos.length > 0) {
-      details.innerHTML = `检测到${aiVideos.length}个可能是AI生成的视频 / Detected ${aiVideos.length} potentially AI-generated video(s)`;
-    } else {
-      details.textContent = `已分析${result.videos.length}个视频，未发现明显AI特征 / Analyzed ${result.videos.length} videos, no AI patterns found`;
-    }
-  } else {
-    el('video-results').style.display = 'none';
-  }
+  // Video results removed
 }
 
 function showError(message) {
@@ -480,7 +458,7 @@ async function loadHistory() {
     const bc = getBadgeClass(score);
     const dotColors = { danger: '#ef4444', warning: '#f59e0b', caution: '#f97316', ok: '#22c55e', safe: '#10b981' };
     const dotColor = dotColors[bc] || '#94a3b8';
-    const typeIcon = { text: '📝', image: '🖼️', images: '🖼️', video: '🎬', videos: '🎬', full: '📄' }[item.contentType] || '📄';
+    const typeIcon = { text: '📝', image: '🖼️', images: '🖼️', full: '📄' }[item.contentType] || '📄';
 
     return `
       <div class="history-item">
@@ -552,6 +530,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.debug('[AI Checker] Could not disable selection mode:', disableErr.message);
     }
     deactivateSelectionUI();
+  });
+
+  el('btn-reselect').addEventListener('click', async () => {
+    if (!currentTab) return;
+    // Clear current selection and re-enable element-picker mode
+    selectedText = '';
+    el('selected-preview').style.display = 'none';
+    chrome.storage.local.remove('selectedElement');
+    try {
+      await chrome.tabs.sendMessage(currentTab.id, { type: 'ENABLE_SELECTION_MODE' });
+    } catch (notReadyErr) {
+      console.debug('[AI Checker] Content script not ready, injecting:', notReadyErr.message);
+      await chrome.scripting.executeScript({
+        target: { tabId: currentTab.id },
+        files: ['content/content.js']
+      });
+      await chrome.tabs.sendMessage(currentTab.id, { type: 'ENABLE_SELECTION_MODE' });
+    }
+    window.close();
   });
 
   el('btn-clear-selection').addEventListener('click', () => {

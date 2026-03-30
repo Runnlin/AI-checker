@@ -54,11 +54,7 @@
           <span class="scope-icon">🖼️</span>
           <span class="scope-label">图片 / Images</span>
         </label>
-        <label class="scope-option">
-          <input type="checkbox" id="scope-videos" checked>
-          <span class="scope-icon">🎬</span>
-          <span class="scope-label">视频 / Videos</span>
-        </label>
+
       </div>
       <!-- Selection mode indicator -->
       <div id="selection-indicator" class="selection-indicator" style="display:none">
@@ -68,6 +64,7 @@
       <div id="selected-preview" class="selected-preview" style="display:none">
         <span class="selected-label">已选中文本 / Selected text:</span>
         <span id="selected-char-count" class="selected-count"></span>
+        <button id="btn-reselect" class="small-btn">🔄 重新选择</button>
         <button id="btn-clear-selection" class="small-btn">清除</button>
       </div>
     </section>
@@ -125,14 +122,7 @@
         <div id="image-list" class="image-list"></div>
       </div>
 
-      <!-- Video Results -->
-      <div id="video-results" class="result-card" style="display:none">
-        <div class="result-card-header">
-          <span>🎬 视频检测 / Videos</span>
-          <span class="result-badge" id="video-score-badge">-</span>
-        </div>
-        <div class="result-details" id="video-result-details"></div>
-      </div>
+      <!-- Video Results removed -->
 
       <!-- Actions -->
       <div class="result-actions">

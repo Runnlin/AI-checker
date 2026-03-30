@@ -90,47 +90,6 @@ function extractImages(scopeSelector) {
 }
 
 /**
- * Extract all videos from the page.
- */
-function extractVideos(scopeSelector) {
-  let root = scopeSelector ? (document.querySelector(scopeSelector) || document.body) : document.body;
-
-  const results = [];
-
-  // HTML5 video elements
-  const videos = Array.from(root.querySelectorAll('video'));
-  videos.forEach(video => {
-    const src = video.src || (video.querySelector('source')?.src) || '';
-    results.push({
-      type: 'video',
-      src,
-      poster: video.poster || '',
-      title: video.title || video.getAttribute('aria-label') || '',
-      width: video.videoWidth || video.width || 0,
-      height: video.videoHeight || video.height || 0
-    });
-  });
-
-  // Embedded iframes (YouTube, Vimeo, etc.)
-  const iframes = Array.from(root.querySelectorAll('iframe'));
-  iframes.forEach(iframe => {
-    const src = iframe.src || '';
-    const isVideo = /youtube|vimeo|dailymotion|bilibili|youku|ixigua|twitch|rumble/i.test(src);
-    if (isVideo) {
-      results.push({
-        type: 'iframe',
-        src,
-        title: iframe.title || '',
-        width: iframe.width || 0,
-        height: iframe.height || 0
-      });
-    }
-  });
-
-  return results;
-}
-
-/**
  * Get page metadata.
  */
 function getPageMeta() {
@@ -511,8 +470,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const result = {
         meta: getPageMeta(),
         text: scope.text ? extractText(selector) : '',
-        images: scope.images ? extractImages(selector) : [],
-        videos: scope.videos ? extractVideos(selector) : []
+        images: scope.images ? extractImages(selector) : []
       };
       sendResponse({ success: true, data: result });
       break;
