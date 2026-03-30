@@ -8,19 +8,21 @@
 // State for selection mode
 let selectionMode = false;
 let selectionOverlay = null;
-let selectionHighlight = null;
-let selectedRange = null;
+let highlightBox = null;
+let hoveredElement = null;
+let selectedElement = null;
 
 /**
  * Extract all visible text content from the page.
  * Respects the given CSS selector scope if provided.
+ * If an element was picked via element picker, extracts text from that element.
  */
 function extractText(scopeSelector) {
   let root;
   if (scopeSelector) {
     root = document.querySelector(scopeSelector) || document.body;
-  } else if (selectedRange) {
-    return selectedRange.toString();
+  } else if (selectedElement) {
+    root = selectedElement;
   } else {
     root = document.body;
   }
@@ -143,98 +145,149 @@ function getPageMeta() {
 }
 
 /**
- * Enable text selection mode with visual overlay.
+ * Enable element-picker selection mode (ad-blocker style).
+ * Hovering highlights the element under the cursor; clicking selects it.
  */
 function enableSelectionMode() {
   if (selectionMode) return;
   selectionMode = true;
+  selectedElement = null;
+
+  // Create floating highlight box that tracks the hovered element
+  highlightBox = document.createElement('div');
+  highlightBox.id = 'ai-checker-highlight-box';
+  highlightBox.style.cssText = [
+    'position:fixed',
+    'pointer-events:none',
+    'z-index:2147483646',
+    'border:2px solid #3b82f6',
+    'background:rgba(59,130,246,0.12)',
+    'border-radius:3px',
+    'display:none',
+    'box-sizing:border-box',
+    'transition:top 0.05s,left 0.05s,width 0.05s,height 0.05s'
+  ].join(';');
+  document.documentElement.appendChild(highlightBox);
 
   // Create overlay banner
   selectionOverlay = document.createElement('div');
   selectionOverlay.id = 'ai-checker-selection-overlay';
+  selectionOverlay.style.cssText = [
+    'position:fixed',
+    'top:0',
+    'left:0',
+    'right:0',
+    'z-index:2147483647',
+    'background:rgba(59,130,246,0.95)',
+    'color:white',
+    'padding:10px 16px',
+    'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+    'font-size:14px',
+    'display:flex',
+    'align-items:center',
+    'justify-content:space-between',
+    'box-shadow:0 2px 8px rgba(0,0,0,0.3)'
+  ].join(';');
   selectionOverlay.innerHTML = `
-    <div style="
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 2147483647;
-      background: rgba(59, 130, 246, 0.95);
-      color: white;
-      padding: 10px 16px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    ">
-      <span>🔍 选择模式已激活 - 请选择要检测的文本区域 / Selection Mode Active - Select text to analyze</span>
-      <button id="ai-checker-cancel-selection" style="
-        background: rgba(255,255,255,0.2);
-        border: 1px solid rgba(255,255,255,0.5);
-        color: white;
-        padding: 4px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 13px;
-      ">取消 / Cancel</button>
-    </div>
+    <span>🔍 点击选择要检测的元素 / Click an element to select it for analysis</span>
+    <button id="ai-checker-cancel-selection" style="
+      background:rgba(255,255,255,0.2);
+      border:1px solid rgba(255,255,255,0.5);
+      color:white;
+      padding:4px 12px;
+      border-radius:4px;
+      cursor:pointer;
+      font-size:13px;
+    ">取消 / Cancel</button>
   `;
-  document.body.appendChild(selectionOverlay);
+  document.documentElement.appendChild(selectionOverlay);
 
-  document.getElementById('ai-checker-cancel-selection').addEventListener('click', disableSelectionMode);
+  document.getElementById('ai-checker-cancel-selection')
+    .addEventListener('click', () => disableSelectionMode(true));
 
-  // Listen for selection changes
-  document.addEventListener('mouseup', onMouseUp);
+  document.addEventListener('mousemove', onMouseMove, true);
+  document.addEventListener('click', onElementClick, true);
+  document.addEventListener('keydown', onKeyDown, true);
 }
 
 /**
- * Disable selection mode.
+ * Disable selection mode and clean up overlays.
+ * @param {boolean} cancelled - true if user cancelled (no element selected)
  */
-function disableSelectionMode() {
+function disableSelectionMode(cancelled) {
   selectionMode = false;
-  selectedRange = null;
+
   if (selectionOverlay) {
     selectionOverlay.remove();
     selectionOverlay = null;
   }
-  if (selectionHighlight) {
-    selectionHighlight.remove();
-    selectionHighlight = null;
+  if (highlightBox) {
+    highlightBox.remove();
+    highlightBox = null;
   }
-  document.removeEventListener('mouseup', onMouseUp);
-  chrome.runtime.sendMessage({ type: 'SELECTION_CANCELLED' });
+  hoveredElement = null;
+
+  document.removeEventListener('mousemove', onMouseMove, true);
+  document.removeEventListener('click', onElementClick, true);
+  document.removeEventListener('keydown', onKeyDown, true);
+
+  if (cancelled) {
+    selectedElement = null;
+    chrome.storage.local.remove('selectedElement');
+    chrome.runtime.sendMessage({ type: 'SELECTION_CANCELLED' });
+  }
 }
 
 /**
- * Handle mouse up in selection mode.
+ * Highlight the element under the cursor as the mouse moves.
  */
-function onMouseUp() {
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0) return;
+function onMouseMove(e) {
+  if (!highlightBox) return;
+  const target = e.target;
+  // Skip the overlay elements themselves
+  if (selectionOverlay && selectionOverlay.contains(target)) return;
+  if (target === highlightBox) return;
 
-  const text = selection.toString().trim();
-  if (text.length < 10) return;
-
-  selectedRange = selection.getRangeAt(0);
-
-  // Notify popup that selection was made
-  chrome.runtime.sendMessage({
-    type: 'TEXT_SELECTED',
-    text: text,
-    length: text.length
-  });
+  hoveredElement = target;
+  const rect = target.getBoundingClientRect();
+  highlightBox.style.display = 'block';
+  highlightBox.style.left = rect.left + 'px';
+  highlightBox.style.top = rect.top + 'px';
+  highlightBox.style.width = rect.width + 'px';
+  highlightBox.style.height = rect.height + 'px';
 }
 
 /**
- * Get the currently selected text.
+ * Select the hovered element when the user clicks.
  */
-function getSelectedText() {
-  if (selectedRange) {
-    return selectedRange.toString();
+function onElementClick(e) {
+  if (!selectionMode) return;
+  // Ignore clicks on the banner itself
+  if (selectionOverlay && selectionOverlay.contains(e.target)) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  const element = hoveredElement || e.target;
+  const text = (element.innerText || element.textContent || '').trim();
+  selectedElement = element;
+
+  // Persist selected text so the popup can read it after reopening
+  chrome.storage.local.set({ selectedElement: { text, timestamp: Date.now() } });
+
+  // Notify background (popup may be closed; it will read from storage on reopen)
+  chrome.runtime.sendMessage({ type: 'TEXT_SELECTED', text, length: text.length });
+
+  disableSelectionMode(false);
+}
+
+/**
+ * Allow Escape key to cancel selection mode.
+ */
+function onKeyDown(e) {
+  if (e.key === 'Escape') {
+    disableSelectionMode(true);
   }
-  return window.getSelection()?.toString() || '';
 }
 
 // Listen for messages from popup/background
@@ -259,18 +312,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
 
     case 'DISABLE_SELECTION_MODE':
-      disableSelectionMode();
+      disableSelectionMode(true);
       sendResponse({ success: true });
       break;
 
     case 'GET_SELECTED_TEXT': {
-      const text = getSelectedText();
+      const text = selectedElement
+        ? (selectedElement.innerText || selectedElement.textContent || '').trim()
+        : '';
       sendResponse({ success: true, text });
       break;
     }
 
     case 'EXTRACT_SELECTED_TEXT': {
-      const text = selectedRange ? selectedRange.toString() : window.getSelection()?.toString() || '';
+      const text = selectedElement
+        ? (selectedElement.innerText || selectedElement.textContent || '').trim()
+        : '';
       sendResponse({ success: true, text });
       break;
     }

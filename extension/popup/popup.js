@@ -93,6 +93,20 @@ async function init() {
   // Load saved scope preferences
   await loadScopePreferences();
 
+  // Restore any element selected via element-picker (persisted across popup close/open).
+  // Discard selections older than 1 hour to avoid stale data.
+  const stored = await chrome.storage.local.get('selectedElement');
+  const sel = stored.selectedElement;
+  const MAX_SELECTION_AGE_MS = 60 * 60 * 1000; // 1 hour
+  if (sel?.text && (Date.now() - (sel.timestamp || 0)) < MAX_SELECTION_AGE_MS) {
+    selectedText = sel.text;
+    el('selected-preview').style.display = 'flex';
+    el('selected-char-count').textContent = `${selectedText.length} 字符`;
+  } else if (sel) {
+    // Expired – clean up storage
+    chrome.storage.local.remove('selectedElement');
+  }
+
   // Load history for current URL if available
   await loadUrlHistory(tab.url);
 }
@@ -181,8 +195,8 @@ async function startScan() {
     // Extract content from page
     let content;
 
-    if (selectionModeActive && selectedText) {
-      // Use selected text only
+    if (selectedText) {
+      // Use element/text selected via element-picker
       content = {
         meta: { url: currentTab.url, title: currentTab.title, timestamp: Date.now() },
         text: scope.text ? selectedText : '',
@@ -190,17 +204,23 @@ async function startScan() {
         videos: []
       };
     } else {
-      // Extract from full page
-      const [response] = await chrome.scripting.executeScript({
-        target: { tabId: currentTab.id },
-        func: (scope) => {
-          return new Promise(resolve => {
-            chrome.runtime.sendMessage({ type: 'EXTRACT_CONTENT', scope }, resolve);
-          });
-        },
-        args: [scope]
-      });
-      content = response?.result?.data;
+      // Extract from full page via content script
+      let response;
+      try {
+        response = await chrome.tabs.sendMessage(currentTab.id, { type: 'EXTRACT_CONTENT', scope });
+      } catch (notReadyErr) {
+        // Content script may not be ready; inject it and retry once
+        console.debug('[AI Checker] Content script not ready, injecting:', notReadyErr.message);
+        await chrome.scripting.executeScript({
+          target: { tabId: currentTab.id },
+          files: ['content/content.js']
+        });
+        response = await chrome.tabs.sendMessage(currentTab.id, { type: 'EXTRACT_CONTENT', scope });
+      }
+      if (!response?.success) {
+        throw new Error(response?.error || '无法提取页面内容 / Could not extract page content');
+      }
+      content = response.data;
     }
 
     if (!content) throw new Error('无法提取页面内容 / Could not extract page content');
@@ -391,19 +411,26 @@ function escapeHtml(str) {
 async function toggleSelectionMode() {
   if (selectionModeActive) {
     // Disable selection mode
-    await chrome.scripting.executeScript({
-      target: { tabId: currentTab.id },
-      func: () => chrome.runtime.sendMessage({ type: 'DISABLE_SELECTION_MODE' })
-    });
+    try {
+      await chrome.tabs.sendMessage(currentTab.id, { type: 'DISABLE_SELECTION_MODE' });
+    } catch (disableErr) {
+      console.debug('[AI Checker] Could not disable selection mode:', disableErr.message);
+    }
     deactivateSelectionUI();
   } else {
     // Enable selection mode
-    await chrome.scripting.executeScript({
-      target: { tabId: currentTab.id },
-      func: () => chrome.runtime.sendMessage({ type: 'ENABLE_SELECTION_MODE' })
-    });
+    try {
+      await chrome.tabs.sendMessage(currentTab.id, { type: 'ENABLE_SELECTION_MODE' });
+    } catch (notReadyErr) {
+      console.debug('[AI Checker] Content script not ready, injecting:', notReadyErr.message);
+      await chrome.scripting.executeScript({
+        target: { tabId: currentTab.id },
+        files: ['content/content.js']
+      });
+      await chrome.tabs.sendMessage(currentTab.id, { type: 'ENABLE_SELECTION_MODE' });
+    }
     activateSelectionUI();
-    // Close popup so user can select on page
+    // Close popup so user can interact with page
     window.close();
   }
 }
@@ -420,6 +447,8 @@ function deactivateSelectionUI() {
   el('selection-indicator').style.display = 'none';
   el('selected-preview').style.display = 'none';
   el('btn-select-mode').textContent = '🖱️ 选择范围';
+  // Clear persisted selection from storage
+  chrome.storage.local.remove('selectedElement');
 }
 
 // ===== History =====
@@ -501,25 +530,34 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   el('btn-select-mode').addEventListener('click', async () => {
     if (!currentTab) return;
-    // Enable selection mode in content script, then close popup
-    await chrome.scripting.executeScript({
-      target: { tabId: currentTab.id },
-      func: () => chrome.runtime.sendMessage({ type: 'ENABLE_SELECTION_MODE' })
-    });
+    // Enable element-picker mode in content script, then close popup so user can interact with page
+    try {
+      await chrome.tabs.sendMessage(currentTab.id, { type: 'ENABLE_SELECTION_MODE' });
+    } catch (notReadyErr) {
+      // Content script not ready; inject it first
+      console.debug('[AI Checker] Content script not ready, injecting:', notReadyErr.message);
+      await chrome.scripting.executeScript({
+        target: { tabId: currentTab.id },
+        files: ['content/content.js']
+      });
+      await chrome.tabs.sendMessage(currentTab.id, { type: 'ENABLE_SELECTION_MODE' });
+    }
     window.close();
   });
 
   el('btn-cancel-selection').addEventListener('click', async () => {
-    await chrome.scripting.executeScript({
-      target: { tabId: currentTab.id },
-      func: () => chrome.runtime.sendMessage({ type: 'DISABLE_SELECTION_MODE' })
-    });
+    try {
+      await chrome.tabs.sendMessage(currentTab.id, { type: 'DISABLE_SELECTION_MODE' });
+    } catch (disableErr) {
+      console.debug('[AI Checker] Could not disable selection mode:', disableErr.message);
+    }
     deactivateSelectionUI();
   });
 
   el('btn-clear-selection').addEventListener('click', () => {
     selectedText = '';
     el('selected-preview').style.display = 'none';
+    chrome.storage.local.remove('selectedElement');
   });
 
   el('btn-options').addEventListener('click', () => {
