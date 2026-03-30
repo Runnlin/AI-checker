@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read version from manifest
+        id: version
+        run: |
+          VERSION=$(jq -r '.version' extension/manifest.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Package extension
+        run: |
+          cd extension
+          zip -r ../ai-checker-v${{ steps.version.outputs.version }}.zip .
+          cd ..
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: AI Content Checker v${{ steps.version.outputs.version }}
+          body: |
+            ## AI Content Checker v${{ steps.version.outputs.version }}
+
+            ### 安装方法 / Installation
+
+            1. 下载下方的 `ai-checker-v${{ steps.version.outputs.version }}.zip` 文件
+               Download `ai-checker-v${{ steps.version.outputs.version }}.zip` below
+            2. 解压缩 / Unzip the file
+            3. 打开 Chrome 并访问 `chrome://extensions/`
+               Open Chrome and navigate to `chrome://extensions/`
+            4. 启用右上角的"开发者模式 / Developer mode"开关 / Enable the "Developer mode" toggle in the top right
+            5. 点击"加载已解压的扩展程序 / Load unpacked"，选择解压后的文件夹
+               Click "Load unpacked" and select the unzipped folder
+          files: ai-checker-v${{ steps.version.outputs.version }}.zip
+          draft: false
+          prerelease: false
